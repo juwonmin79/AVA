@@ -913,6 +913,17 @@ export default function App() {
                 <p className="section-label">Workspace</p>
                 <h2>AVA Council</h2>
                 <p className="hero-card__subtitle">다중 LLM 합의로 더 나은 의사결정을</p>
+                <div className="hero-card__workflow" aria-label="decision workflow">
+                  <span>Question</span>
+                  <span aria-hidden="true">→</span>
+                  <span>Prompt</span>
+                  <span aria-hidden="true">→</span>
+                  <span>Models</span>
+                  <span aria-hidden="true">→</span>
+                  <span>Consensus</span>
+                  <span aria-hidden="true">→</span>
+                  <span>Decision</span>
+                </div>
               </div>
               <div className="hero-card__meta">
                 <span>{activeWorkspaceName}</span>
@@ -939,6 +950,10 @@ export default function App() {
                   프롬프트 만들기
                 </button>
               </div>
+
+              <p className="studio-card__lead">
+                질문, 공통 기준, 프로젝트 맥락을 하나의 입력 엔진에서 조합해 최종 프롬프트를 만듭니다.
+              </p>
 
               <div className="studio-grid">
                 <label className="field field--prompt">
@@ -1026,14 +1041,13 @@ export default function App() {
                     <div className="section-heading">
                       <span className="section-icon" aria-hidden="true">□</span>
                       <div>
-                        <p className="section-label">응답 영역</p>
-                        <h3>{label} 답변</h3>
+                        <h3>{label}</h3>
                       </div>
                     </div>
                   </div>
 
                   <label className="field">
-                    <span className="field__label">
+                    <span className="field__label field__label--sr-only">
                       <span className="field__icon" aria-hidden="true">□</span>
                       {label} 답변
                     </span>
@@ -1053,8 +1067,8 @@ export default function App() {
                 <div className="section-heading">
                   <span className="section-icon" aria-hidden="true">✦</span>
                   <div>
-                    <p className="section-label">카운슬 분석</p>
-                    <h3>세 모델 답변을 비교해 합의와 충돌을 정리합니다</h3>
+                    <p className="section-label">합의 엔진</p>
+                    <h3>Consensus Engine</h3>
                   </div>
                 </div>
                 <button
@@ -1066,12 +1080,12 @@ export default function App() {
                 </button>
               </div>
               <p className="analysis-control-card__text">
-                이 단계는 로컬 규칙 기반 placeholder 로직으로 합의, 충돌, 고유 통찰을 먼저 정리하고,
-                최종 판단은 사용자가 이어서 작성할 수 있게 구성되어 있습니다.
+                세 모델 답변을 비교해 합의, 충돌, 고유 통찰을 같은 판단 흐름 안에서 정리합니다.
               </p>
             </section>
 
-            <section className="analysis-grid analysis-grid--triad">
+            <section className="consensus-engine">
+              <section className="analysis-grid analysis-grid--triad">
               {[
                 ['consensus', '합의', 'consensus'],
                 ['conflict', '충돌', 'conflict'],
@@ -1082,14 +1096,13 @@ export default function App() {
                     <div className="section-heading">
                       <span className="section-icon" aria-hidden="true">□</span>
                       <div>
-                        <p className="section-label">분석 영역</p>
                         <h3>{label}</h3>
                       </div>
                     </div>
                   </div>
 
                   <label className="field">
-                    <span className="field__label">
+                    <span className="field__label field__label--sr-only">
                       <span className="field__icon" aria-hidden="true">□</span>
                       {label}
                     </span>
@@ -1102,6 +1115,7 @@ export default function App() {
                   </label>
                 </article>
               ))}
+              </section>
             </section>
 
             <section
@@ -1112,14 +1126,13 @@ export default function App() {
                 <div className="section-heading">
                   <span className="section-icon" aria-hidden="true">□</span>
                   <div>
-                    <p className="section-label">Human Decision</p>
                     <h3>인간 판단</h3>
                   </div>
                 </div>
               </div>
 
               <label className="field">
-                <span className="field__label">
+                <span className="field__label field__label--sr-only">
                   <span className="field__icon" aria-hidden="true">□</span>
                   인간 판단
                 </span>
