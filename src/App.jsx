@@ -1096,6 +1096,60 @@ function summarizeText(text) {
   return summary
 }
 
+const navigatorFieldLabels = new Set([
+  '질문',
+  '프롬프트',
+  '제목',
+  '입력',
+  '공통 프롬프트',
+  '프로젝트 프롬프트',
+])
+
+function pickNavigatorPreview(candidates) {
+  const picked = candidates.find((value) => {
+    if (!value || typeof value !== 'string') return false
+
+    const text = value.trim()
+    if (!text) return false
+    if (navigatorFieldLabels.has(text)) return false
+
+    return true
+  })
+
+  return picked ? summarizeText(picked) : '내용 없음'
+}
+
+function getNavigatorPreview(item, data, effectivePrompt) {
+  switch (item.type) {
+    case 'question':
+      return pickNavigatorPreview([data.question, data.projectPrompt, data.globalPrompt])
+    case 'finalPrompt':
+      return pickNavigatorPreview([effectivePrompt, data.finalPrompt])
+    case 'gptResponse':
+      return pickNavigatorPreview([data.gptResponse])
+    case 'claudeResponse':
+      return pickNavigatorPreview([data.claudeResponse])
+    case 'geminiResponse':
+      return pickNavigatorPreview([data.geminiResponse])
+    case 'consensus':
+      return pickNavigatorPreview([data.consensus])
+    case 'conflict':
+      return pickNavigatorPreview([data.conflict])
+    case 'uniqueInsight':
+      return pickNavigatorPreview([data.uniqueInsight])
+    case 'humanDecision':
+      return pickNavigatorPreview([data.humanDecision])
+    case 'decisionTools':
+      return pickNavigatorPreview([
+        data.humanDecision,
+        data.strategies[0]?.title,
+        data.decisionNodes.nodes[0]?.title,
+      ])
+    default:
+      return '내용 없음'
+  }
+}
+
 function getSectionSummary(type, data) {
   switch (type) {
     case 'question':
@@ -1582,6 +1636,9 @@ export default function App() {
   const [copiedPanel, setCopiedPanel] = useState('')
   const [workspaceNotice, setWorkspaceNotice] = useState('작업공간이 준비되었습니다.')
   const [activeSectionId, setActiveSectionId] = useState(navigatorItems[0].id)
+  const [navigatorSectionIds, setNavigatorSectionIds] = useState(
+    navigatorItems.map((item) => item.id)
+  )
   const [showAllTimeline, setShowAllTimeline] = useState(false)
   const [graphBuildFeedback, setGraphBuildFeedback] = useState('')
   const [hypothesisError, setHypothesisError] = useState('')
@@ -1642,10 +1699,83 @@ export default function App() {
   const claimFocusValuesRef = useRef({})
   const learningFocusValuesRef = useRef({})
   const importWorkspaceInputRef = useRef(null)
+  const mainScrollRef = useRef(null)
+  const sectionTitleRefs = useRef({})
 
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ||
     workspaces[0]
+
+  const getSectionTopInContainer = (sectionId) => {
+    const container = mainScrollRef.current
+    const element = sectionTitleRefs.current[sectionId]
+
+    if (!container || !element) {
+      return 0
+    }
+
+    const containerRect = container.getBoundingClientRect()
+    const elementRect = element.getBoundingClientRect()
+
+    return elementRect.top - containerRect.top + container.scrollTop
+  }
+
+  const updateActiveNavigatorSection = () => {
+    const container = mainScrollRef.current
+
+    if (!container) {
+      return
+    }
+
+    const candidates = navigatorItems
+      .map((item) => {
+        const element = sectionTitleRefs.current[item.id]
+
+        if (!element) {
+          return null
+        }
+
+        return {
+          id: item.id,
+          topInContainer: getSectionTopInContainer(item.id),
+          rectTop: element.getBoundingClientRect().top,
+        }
+      })
+      .filter(Boolean)
+
+    if (candidates.length === 0) {
+      return
+    }
+
+    const orderedCandidates = [...candidates].sort(
+      (left, right) => left.topInContainer - right.topInContainer
+    )
+    const orderedIds = orderedCandidates.map((item) => item.id)
+
+    setNavigatorSectionIds((current) => {
+      if (
+        current.length === orderedIds.length &&
+        current.every((id, index) => id === orderedIds[index])
+      ) {
+        return current
+      }
+
+      return orderedIds
+    })
+
+    const activationLine = container.getBoundingClientRect().top + 96
+    let nextActive = orderedCandidates[0]
+
+    orderedCandidates.forEach((item) => {
+      if (item.rectTop <= activationLine) {
+        nextActive = item
+      }
+    })
+
+    if (nextActive?.id) {
+      setActiveSectionId(nextActive.id)
+    }
+  }
 
   const activeWorkspaceName = activeWorkspace?.name || '작업공간'
   const workspaceData = activeWorkspace?.data || createWorkspaceData()
@@ -2149,39 +2279,33 @@ export default function App() {
   }, [eligibleEvolutionLearnings])
 
   useEffect(() => {
-    const handleScroll = () => {
-      const candidates = navigatorItems
-        .map((item) => {
-          const element = document.getElementById(item.id)
+    const container = mainScrollRef.current
 
-          if (!element) {
-            return null
-          }
-
-          const rect = element.getBoundingClientRect()
-
-          return {
-            id: item.id,
-            topDistance: Math.abs(rect.top - 140),
-            isPassed: rect.top <= 180,
-          }
-        })
-        .filter(Boolean)
-
-      const passedSections = candidates.filter((item) => item.isPassed)
-      const nextActive =
-        passedSections[passedSections.length - 1] ||
-        candidates.sort((left, right) => left.topDistance - right.topDistance)[0]
-
-      if (nextActive?.id) {
-        setActiveSectionId(nextActive.id)
-      }
+    if (!container) {
+      return undefined
     }
 
-    handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
+    let ticking = false
+    const handleScroll = () => {
+      if (ticking) {
+        return
+      }
 
-    return () => window.removeEventListener('scroll', handleScroll)
+      ticking = true
+      requestAnimationFrame(() => {
+        updateActiveNavigatorSection()
+        ticking = false
+      })
+    }
+
+    updateActiveNavigatorSection()
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleScroll)
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleScroll)
+    }
   }, [activeWorkspaceId])
 
   const updateActiveWorkspace = (updater) => {
@@ -3839,26 +3963,48 @@ export default function App() {
   }
 
   const handleNavigatorItemClick = (sectionId) => {
-    const target = document.getElementById(sectionId)
+    const container = mainScrollRef.current
+    const target = sectionTitleRefs.current[sectionId]
 
-    if (target) {
-      target.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
+    if (!container || !target) {
+      return
     }
+
+    const contextNavOffset = 40
+    const top = getSectionTopInContainer(sectionId)
+
+    container.scrollTo({
+      top: Math.max(0, top - contextNavOffset),
+      behavior: 'smooth',
+    })
+  }
+
+  const registerSectionTitle = (sectionId) => (element) => {
+    if (element) {
+      sectionTitleRefs.current[sectionId] = element
+      return
+    }
+
+    delete sectionTitleRefs.current[sectionId]
   }
 
   const handleConversationAnchorClick = (anchor) => {
+    const container = mainScrollRef.current
     const targetId = getConversationAnchorTargetId(anchor)
     const target = targetId ? document.getElementById(targetId) : null
 
-    if (target) {
-      target.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      })
+    if (!container || !target) {
+      return
     }
+
+    const containerRect = container.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    const top = targetRect.top - containerRect.top + container.scrollTop
+
+    container.scrollTo({
+      top: Math.max(0, top - 72),
+      behavior: 'smooth',
+    })
   }
 
   const handleCreateWorkspace = () => {
@@ -4099,6 +4245,17 @@ export default function App() {
     setWorkspaceNotice('오케스트레이션 패킷 JSON을 내보냈습니다.')
   }
 
+  const orderedNavigatorItems = navigatorSectionIds
+    .map((sectionId) => navigatorItems.find((item) => item.id === sectionId))
+    .filter(Boolean)
+    .map((item) => ({
+      id: item.id,
+      preview: getNavigatorPreview(item, workspaceData, effectiveFinalPrompt),
+      type: item.type,
+      label: item.label,
+      shortLabel: item.shortLabel,
+    }))
+
   return (
     <div
       className={`app-shell ${
@@ -4109,8 +4266,8 @@ export default function App() {
         <div className="sidebar-card sidebar__brand">
           <div className="sidebar__badge">AVA</div>
           <div>
-            <h1><span>AVA</span> <span className="sidebar__brand-accent">Council</span></h1>
-            <p className="sidebar__subtitle">Decision OS</p>
+            <h1>Answer · Verify · Action</h1>
+            <p className="sidebar__subtitle">Human-AI Decision OS</p>
           </div>
         </div>
 
@@ -4122,7 +4279,7 @@ export default function App() {
             </div>
             <button
               type="button"
-              className="ghost-button workspace-heading__button"
+              className="ghost-button btn-secondary workspace-heading__button workspace-create-button"
               onClick={handleCreateWorkspace}
             >
               <span className="button-icon">✦</span>
@@ -4185,7 +4342,7 @@ export default function App() {
             <div className="workspace-action-group workspace-action-group--primary">
               <button
                 type="button"
-                className="ghost-button"
+                className="ghost-button btn-secondary save-button"
                 onClick={handleSaveWorkspace}
               >
                 <span className="button-icon">▣</span>
@@ -4193,7 +4350,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                className="ghost-button"
+                className="ghost-button btn-secondary"
                 onClick={handleClearWorkspace}
               >
                 <span className="button-icon">⌫</span>
@@ -4205,14 +4362,14 @@ export default function App() {
               <div className="workspace-action-group__buttons">
                 <button
                   type="button"
-                  className="ghost-button"
+                  className="ghost-button btn-secondary export-button"
                   onClick={handleExportWorkspaceJson}
                 >
                   내보내기
                 </button>
                 <button
                   type="button"
-                  className="ghost-button"
+                  className="ghost-button btn-secondary import-button"
                   onClick={handleImportWorkspaceClick}
                 >
                   가져오기
@@ -4224,21 +4381,21 @@ export default function App() {
               <div className="workspace-action-group__buttons">
                 <button
                   type="button"
-                  className="ghost-button"
+                  className="ghost-button btn-secondary"
                   onClick={handleGenerateCliPacket}
                 >
                   생성
                 </button>
                 <button
                   type="button"
-                  className="ghost-button"
+                  className="ghost-button btn-secondary copy-button"
                   onClick={handleCopyCliPacket}
                 >
                   복사
                 </button>
                 <button
                   type="button"
-                  className="ghost-button"
+                  className="ghost-button btn-secondary markdown-button"
                   onClick={handleDownloadCliPacket}
                 >
                   .md
@@ -4255,7 +4412,7 @@ export default function App() {
             </div>
             <button
               type="button"
-              className="ghost-button ghost-button--primary snapshot-section__button"
+              className="ghost-button btn-secondary snapshot-section__button snapshot-button"
               onClick={handleSaveSnapshot}
             >
               <span className="button-icon">📷</span>
@@ -4314,8 +4471,7 @@ export default function App() {
           <p>작업 내용은 자동 복원됩니다.</p>
         </div>
       </aside>
-
-      <main className="dashboard">
+      <section className="main-shell" ref={mainScrollRef}>
         <nav className="top-nav" aria-label="Top navigation">
           <button type="button" className="top-nav__item top-nav__item--theme" aria-label="Toggle theme">
             <span className="top-nav__text">☀</span>
@@ -4323,51 +4479,36 @@ export default function App() {
           <button type="button" className="top-nav__item top-nav__item--language">
             <span className="top-nav__text">KOR</span>
           </button>
-          <button type="button" className="top-nav__item">
+          <button type="button" className="top-nav__item top-nav__item--login">
             로그인
           </button>
-          <button type="button" className="top-nav__item top-nav__item--accent">
+          <button type="button" className="top-nav__item top-nav__item--accent top-nav__item--signup">
             회원가입
           </button>
         </nav>
+      <main className="dashboard">
         <div className="workspace-content">
             <section className="hero-card">
               <div className="hero-card__content">
-                <p className="hero-card__subtitle">ANSWER · VERIFY · ACTION</p>
-                <div className="hero-card__workflow" aria-label="decision workflow">
-                  <button
-                    type="button"
-                    className="hero-card__step"
-                    onClick={() => handleNavigatorItemClick('question-studio')}
-                  >
-                    <strong>Answer</strong>
-                  </button>
-                  <button
-                    type="button"
-                    className="hero-card__step"
-                    onClick={() => handleNavigatorItemClick('gpt-response')}
-                  >
-                    <strong>Verify</strong>
-                  </button>
-                  <button
-                    type="button"
-                    className="hero-card__step"
-                    onClick={() => handleNavigatorItemClick('decision-tools')}
-                  >
-                    <strong>Action</strong>
-                  </button>
-                </div>
+                <h2>Decision Intelligence Workspace</h2>
+                <p className="hero-card__subtitle">다중 LLM 합의로 더 나은 의사결정을</p>
               </div>
               <div className="hero-card__meta">
-                <span>AVA</span>
-                <span>3 Models</span>
-                <span>4 Analysis Blocks</span>
+                <span className="hero-card__badge hero-card__badge--accent">질문</span>
+                <span className="hero-card__badge">검증</span>
+                <span className="hero-card__badge">실행</span>
               </div>
             </section>
 
             <section id="question-studio" className="card studio-card section-anchor">
               <div className="card__header">
-                <div className="section-heading">
+                <div
+                  ref={registerSectionTitle('question-studio')}
+                  id="context-title-question-studio"
+                  data-context-anchor="section-title"
+                  data-context-section-id="question-studio"
+                  className="section-heading context-section-anchor"
+                >
                   <span className="section-icon" aria-hidden="true">✦</span>
                   <div>
                     <p className="section-label">입력</p>
@@ -4376,7 +4517,7 @@ export default function App() {
                 </div>
                 <button
                   type="button"
-                  className="ghost-button ghost-button--primary"
+                  className="ghost-button ghost-button--primary btn-primary prompt-create-button"
                   onClick={handleBuildPrompt}
                 >
                   <span className="button-icon">✦</span>
@@ -4435,7 +4576,13 @@ export default function App() {
               className="card composer-card section-anchor"
             >
               <div className="card__header">
-                <div className="section-heading">
+                <div
+                  ref={registerSectionTitle('final-prompt-preview')}
+                  id="context-title-final-prompt-preview"
+                  data-context-anchor="section-title"
+                  data-context-section-id="final-prompt-preview"
+                  className="section-heading context-section-anchor"
+                >
                   <span className="section-icon" aria-hidden="true">□</span>
                   <div>
                     <p className="section-label">프롬프트 컴포저</p>
@@ -4447,7 +4594,7 @@ export default function App() {
                     <button
                       key={label}
                       type="button"
-                      className="ghost-button ghost-button--compact"
+                      className="ghost-button btn-secondary ghost-button--compact copy-button"
                       onClick={() => handleCopyPrompt(label)}
                     >
                       {copiedPanel === label ? '✓ Copied' : `${label}용 복사`}
@@ -4629,7 +4776,13 @@ export default function App() {
               ].map(([key, label, id]) => (
                 <article key={key} id={id} className="card response-card section-anchor">
                   <div className="card__header">
-                    <div className="section-heading">
+                    <div
+                      ref={registerSectionTitle(id)}
+                      id={`context-title-${id}`}
+                      data-context-anchor="section-title"
+                      data-context-section-id={id}
+                      className="section-heading context-section-anchor"
+                    >
                       <span className="section-icon" aria-hidden="true">□</span>
                       <div>
                         <h3>{label}</h3>
@@ -4693,7 +4846,13 @@ export default function App() {
               ].map(([key, label, id]) => (
                 <article key={key} id={id} className="card analysis-card section-anchor">
                   <div className="card__header">
-                    <div className="section-heading">
+                    <div
+                      ref={registerSectionTitle(id)}
+                      id={`context-title-${id}`}
+                      data-context-anchor="section-title"
+                      data-context-section-id={id}
+                      className="section-heading context-section-anchor"
+                    >
                       <span className="section-icon" aria-hidden="true">□</span>
                       <div>
                         <h3>{label}</h3>
@@ -4723,7 +4882,13 @@ export default function App() {
               className="card analysis-card analysis-card--decision section-anchor"
             >
               <div className="card__header">
-                <div className="section-heading">
+                <div
+                  ref={registerSectionTitle('human-decision')}
+                  id="context-title-human-decision"
+                  data-context-anchor="section-title"
+                  data-context-section-id="human-decision"
+                  className="section-heading context-section-anchor"
+                >
                   <span className="section-icon" aria-hidden="true">□</span>
                   <div>
                     <h3>인간 판단</h3>
@@ -4773,7 +4938,7 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    className="ghost-button"
+                    className="ghost-button ghost-button--primary btn-primary decision-graph-button"
                     onClick={handleBuildGraph}
                   >
                     Build Graph
@@ -5933,7 +6098,13 @@ export default function App() {
 
             <section id="decision-tools" className="card graph-card section-anchor">
               <div className="card__header">
-                <div className="section-heading">
+                <div
+                  ref={registerSectionTitle('decision-tools')}
+                  id="context-title-decision-tools"
+                  data-context-anchor="section-title"
+                  data-context-section-id="decision-tools"
+                  className="section-heading context-section-anchor"
+                >
                   <span className="section-icon" aria-hidden="true">✦</span>
                   <div>
                     <p className="section-label">Decision Tools</p>
@@ -6498,10 +6669,10 @@ export default function App() {
             </section>
         </div>
       </main>
-
+      </section>
       <aside className="thought-ruler">
         <nav className="thought-ruler__track" aria-label="Live Thought Navigator">
-          {navigatorItems.map((item, index) => {
+          {orderedNavigatorItems.map((item, index) => {
             const isActive = item.id === activeSectionId
             const summary = getSectionSummary(item.type, workspaceData)
             const hasContent = summary !== '아직 입력 없음'
@@ -6522,7 +6693,7 @@ export default function App() {
               >
                 <span className="thought-ruler__line">
                   <span className="thought-ruler__dot" />
-                  {index < navigatorItems.length - 1 ? (
+                  {index < orderedNavigatorItems.length - 1 ? (
                     <span className="thought-ruler__stem" />
                   ) : null}
                 </span>
@@ -6554,11 +6725,11 @@ export default function App() {
         >
           <span className="conversation-minimap__rail-label">Context</span>
           <span className="conversation-minimap__markers" aria-hidden="true">
-            {generatedConversationAnchors.length > 0 ? (
-              generatedConversationAnchors.map((anchor) => (
+            {orderedNavigatorItems.length > 0 ? (
+              orderedNavigatorItems.map((item) => (
                 <span
-                  key={`marker-${anchor.id}`}
-                  className={`conversation-minimap__marker conversation-minimap__marker--${anchor.sourceType}`}
+                  key={`marker-${item.id}`}
+                  className="conversation-minimap__marker conversation-minimap__marker--section"
                 />
               ))
             ) : (
@@ -6572,7 +6743,6 @@ export default function App() {
             <div className="conversation-minimap__header">
               <div>
                 <p className="section-label">Context Navigator</p>
-                <strong>{generatedConversationAnchors.length} anchors</strong>
               </div>
               <button
                 type="button"
@@ -6583,27 +6753,22 @@ export default function App() {
               </button>
             </div>
 
-            {generatedConversationAnchors.length > 0 ? (
+            {orderedNavigatorItems.length > 0 ? (
               <div className="conversation-minimap__list">
-                {generatedConversationAnchors.map((anchor) => (
+                {orderedNavigatorItems.map((item) => (
                   <button
-                    key={anchor.id}
+                    key={item.id}
                     type="button"
                     className="conversation-minimap__item"
-                    onClick={() => handleConversationAnchorClick(anchor)}
+                    onClick={() => handleNavigatorItemClick(item.id)}
                   >
                     <span className="conversation-minimap__item-label">
-                      {anchor.label}
+                      {item.preview}
                     </span>
                     <span className="conversation-minimap__item-meta">
-                      <span className={`timeline-chip conversation-minimap__type conversation-minimap__type--${anchor.sourceType}`}>
-                        {anchor.sourceType}
+                      <span className={`timeline-chip conversation-minimap__type conversation-minimap__type--${item.type}`}>
+                        {item.type}
                       </span>
-                      {anchor.createdAt ? (
-                        <span>
-                          {new Date(anchor.createdAt).toLocaleDateString('ko-KR')}
-                        </span>
-                      ) : null}
                     </span>
                   </button>
                 ))}
