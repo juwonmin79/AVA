@@ -1636,6 +1636,7 @@ export default function App() {
   const [copiedPanel, setCopiedPanel] = useState('')
   const [workspaceNotice, setWorkspaceNotice] = useState('작업공간이 준비되었습니다.')
   const [activeSectionId, setActiveSectionId] = useState(navigatorItems[0].id)
+  const [hasUsedNavigator, setHasUsedNavigator] = useState(false)
   const [navigatorSectionIds, setNavigatorSectionIds] = useState(
     navigatorItems.map((item) => item.id)
   )
@@ -1701,6 +1702,7 @@ export default function App() {
   const importWorkspaceInputRef = useRef(null)
   const mainScrollRef = useRef(null)
   const sectionTitleRefs = useRef({})
+  const conversationMinimapRef = useRef(null)
 
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ||
@@ -2158,6 +2160,26 @@ export default function App() {
     setShowAllTimeline(false)
     setGraphBuildFeedback('')
   }, [activeWorkspaceId])
+
+  useEffect(() => {
+    if (!isConversationMinimapExpanded) {
+      return undefined
+    }
+
+    const handlePointerDown = (event) => {
+      const minimap = conversationMinimapRef.current
+      if (!minimap || minimap.contains(event.target)) {
+        return
+      }
+
+      setIsConversationMinimapExpanded(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+    }
+  }, [isConversationMinimapExpanded])
 
   useEffect(() => {
     setHypothesisDraft({
@@ -4255,13 +4277,24 @@ export default function App() {
       label: item.label,
       shortLabel: item.shortLabel,
     }))
+  const activeNavigatorIndex = orderedNavigatorItems.findIndex(
+    (item) => item.id === activeSectionId
+  )
 
   return (
     <div
       className={`app-shell ${
         isConversationMinimapExpanded ? 'app-shell--minimap-expanded' : ''
+      } ${
+        hasUsedNavigator ? 'app-shell--navigator-used' : ''
       }`}
     >
+      <div className="global-aurora" aria-hidden="true">
+        <span className="aurora-blob aurora-blob--violet" />
+        <span className="aurora-blob aurora-blob--cyan" />
+        <span className="aurora-blob aurora-blob--blue" />
+        <span className="aurora-blob aurora-blob--mist" />
+      </div>
       <aside className="sidebar">
         <div className="sidebar-card sidebar__brand">
           <div className="sidebar__badge">AVA</div>
@@ -4491,7 +4524,7 @@ export default function App() {
             <section className="hero-card">
               <div className="hero-card__content">
                 <h2>Decision Intelligence Workspace</h2>
-                <p className="hero-card__subtitle">다중 LLM 합의로 더 나은 의사결정을</p>
+                <p className="hero-card__subtitle">다중 LLM 합의 기반 의사결정 워크스페이스</p>
               </div>
               <div className="hero-card__meta">
                 <span className="hero-card__badge hero-card__badge--accent">질문</span>
@@ -6711,55 +6744,77 @@ export default function App() {
       </aside>
 
       <aside
+        ref={conversationMinimapRef}
         className={`conversation-minimap ${
           isConversationMinimapExpanded ? 'conversation-minimap--expanded' : ''
         }`}
         aria-label="Conversation Minimap"
       >
-        <button
-          type="button"
+        <div
           className="conversation-minimap__rail"
-          onClick={() => setIsConversationMinimapExpanded((current) => !current)}
-          aria-expanded={isConversationMinimapExpanded}
-          aria-label="Toggle conversation minimap"
+          onClick={() => {
+            setHasUsedNavigator(true)
+            setIsConversationMinimapExpanded((current) => !current)
+          }}
+          role="navigation"
+          aria-label="Conversation position navigator"
         >
           <span className="conversation-minimap__rail-label">Context</span>
-          <span className="conversation-minimap__markers" aria-hidden="true">
+          <span className="conversation-minimap__markers">
             {orderedNavigatorItems.length > 0 ? (
-              orderedNavigatorItems.map((item) => (
-                <span
+              orderedNavigatorItems.map((item, index) => {
+                const distance =
+                  activeNavigatorIndex >= 0
+                    ? Math.abs(index - activeNavigatorIndex)
+                    : 2
+                const emphasis = Math.max(0.28, 1 - distance * 0.2)
+
+                return (
+                <button
                   key={`marker-${item.id}`}
-                  className="conversation-minimap__marker conversation-minimap__marker--section"
-                />
-              ))
+                  type="button"
+                  className={`conversation-minimap__marker conversation-minimap__marker--section ${
+                    item.id === activeSectionId ? 'conversation-minimap__marker--active' : ''
+                  }`}
+                  style={{ '--navigator-emphasis': emphasis }}
+                  data-label={item.shortLabel}
+                  aria-label={`${item.label} 위치로 이동`}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setHasUsedNavigator(true)
+                    setIsConversationMinimapExpanded(true)
+                    handleNavigatorItemClick(item.id)
+                  }}
+                >
+                  {index === 0 ? '+' : '-'}
+                </button>
+                )
+              })
             ) : (
               <span className="conversation-minimap__marker" />
             )}
           </span>
-        </button>
+        </div>
 
         {isConversationMinimapExpanded ? (
           <div className="conversation-minimap__panel">
-            <div className="conversation-minimap__header">
-              <div>
-                <p className="section-label">Context Navigator</p>
-              </div>
-              <button
-                type="button"
-                className="ghost-button ghost-button--compact"
-                onClick={() => setIsConversationMinimapExpanded(false)}
-              >
-                닫기
-              </button>
-            </div>
-
             {orderedNavigatorItems.length > 0 ? (
               <div className="conversation-minimap__list">
-                {orderedNavigatorItems.map((item) => (
+                {orderedNavigatorItems.map((item, index) => {
+                  const distance =
+                    activeNavigatorIndex >= 0
+                      ? Math.abs(index - activeNavigatorIndex)
+                      : 2
+                  const emphasis = Math.max(0.28, 1 - distance * 0.2)
+
+                  return (
                   <button
                     key={item.id}
                     type="button"
-                    className="conversation-minimap__item"
+                    className={`conversation-minimap__item ${
+                      item.id === activeSectionId ? 'conversation-minimap__item--active' : ''
+                    }`}
+                    style={{ '--navigator-emphasis': emphasis }}
                     onClick={() => handleNavigatorItemClick(item.id)}
                   >
                     <span className="conversation-minimap__item-label">
@@ -6771,7 +6826,8 @@ export default function App() {
                       </span>
                     </span>
                   </button>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <p className="conversation-minimap__empty">

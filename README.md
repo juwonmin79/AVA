@@ -1,16 +1,158 @@
-# React + Vite
+# AVA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**AVA (Adaptive Verification Architecture)**
 
-Currently, two official plugins are available:
+A Human-AI Decision Intelligence Workspace designed to transform questions into structured reasoning, experimentation, learning, and evolution.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Vision
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+AVA is not a chatbot.
 
-## Expanding the ESLint configuration
+AVA is a decision workspace where humans and AI collaborate to:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Verify questions
+- Generate hypotheses
+- Run reasoning workflows
+- Compare multiple models
+- Build consensus
+- Create decisions
+- Capture learning
+- Evolve systems over time
+
+---
+
+## Current Status
+
+UI Freeze Candidate
+
+Progress: ~95%
+
+---
+
+## Workspace Architecture
+
+### Header Layer
+
+Global identity and controls.
+
+- AVA branding
+- Theme controls
+- Language controls
+- Authentication controls
+
+### Sidebar Layer
+
+Workspace navigation and project context.
+
+- Workspace
+- Snapshot
+- JSON
+- CLI Bridge
+- Project utilities
+
+### Main Workspace Layer
+
+Primary decision workflow.
+
+- Hero
+- Question Studio
+- Prompt Composer
+- Multi-LLM Reasoning
+- Consensus
+- Decision Support
+
+### Navigator Layer
+
+Workflow navigation system.
+
+Features:
+
+- Active state tracking
+- Floating navigation popup
+- Start Beacon (+)
+- Section navigation
+
+---
+
+## Key Discoveries
+
+### Aurora Visibility
+
+Initial assumption:
+
+Aurora animation was too weak.
+
+Actual cause:
+
+Layout and card opacity layers were masking the Aurora layer.
+
+Resolution:
+
+Rebalancing transparency produced significantly better results than increasing animation complexity.
+
+### Hero Philosophy
+
+Hero is not part of the workflow.
+
+Hero acts as:
+
+- Identity layer
+- Context layer
+- Brand layer
+
+The actual workflow begins at Question Studio.
+
+### Navigator Philosophy
+
+Navigator is not a menu.
+
+Navigator is a workflow locator.
+
+The first "+" marker acts as a Start Beacon guiding users into the decision process.
+
+---
+
+## Technology
+
+- React
+- Vite
+- Glassmorphism UI
+- Multi-LLM Orchestration Concepts
+
+---
+
+## Next Phase
+
+### UX Sprint
+
+Goal:
+
+A first-time user should understand:
+
+- Where to start
+- What to do
+- Where they currently are
+
+within 3 seconds of opening AVA.
+
+---
+
+## Project Status
+
+Current phase:
+
+UI Freeze → UX Sprint
+
+Future phases:
+
+- Decision Engine
+- Hypothesis Engine
+- Experiment Engine
+- Learning Engine
+- Evolution Engine
+
+---
+
+Built through iterative exploration, observation, experimentation, and continuous refinement.
