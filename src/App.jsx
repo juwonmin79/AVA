@@ -4306,10 +4306,7 @@ export default function App() {
 
         <section className="sidebar-card sidebar-panel">
           <div className="workspace-heading">
-            <div>
-              <p className="section-label">작업공간</p>
-              <strong>작업공간</strong>
-            </div>
+
             <button
               type="button"
               className="ghost-button btn-secondary workspace-heading__button workspace-create-button"
@@ -4550,10 +4547,9 @@ export default function App() {
                 </div>
                 <button
                   type="button"
-                  className="ghost-button ghost-button--primary btn-primary prompt-create-button"
+                  className="ghost-button btn-secondary utility-action-button prompt-create-button"
                   onClick={handleBuildPrompt}
                 >
-                  <span className="button-icon">✦</span>
                   프롬프트 만들기
                 </button>
               </div>
@@ -4971,7 +4967,7 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    className="ghost-button ghost-button--primary btn-primary decision-graph-button"
+                    className="ghost-button btn-secondary utility-action-button decision-graph-button"
                     onClick={handleBuildGraph}
                   >
                     Build Graph

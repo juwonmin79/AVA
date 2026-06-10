@@ -5688,6 +5688,66 @@ button,
   }
 }
 
+.utility-action-button,
+.prompt-create-button,
+.decision-graph-button {
+  border: 1px solid var(--btn-border) !important;
+  border-radius: var(--btn-radius);
+  color: var(--btn-text) !important;
+  font-weight: 760;
+  background: var(--btn-glass-bg) !important;
+  box-shadow: var(--btn-shadow) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.utility-action-button:hover,
+.utility-action-button:focus-visible,
+.prompt-create-button:hover,
+.prompt-create-button:focus-visible,
+.decision-graph-button:hover,
+.decision-graph-button:focus-visible {
+  color: var(--btn-text) !important;
+  background: var(--btn-glass-bg-hover) !important;
+  border-color: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: var(--btn-shadow-hover) !important;
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+}
+
+.decision-tool-tabs {
+  border-color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.decision-tool-tab {
+  color: rgba(68, 74, 103, 0.78);
+  background: transparent;
+}
+
+.decision-tool-tab:hover,
+.decision-tool-tab:focus-visible {
+  color: var(--btn-text);
+  background: var(--btn-glass-bg-hover);
+  box-shadow: var(--btn-shadow);
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+}
+
+.decision-tool-tab--active,
+.decision-tool-tab--active:hover,
+.decision-tool-tab--active:focus-visible {
+  color: rgba(31, 38, 70, 0.92);
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    0 8px 18px rgba(111, 124, 160, 0.08);
+  filter: none;
+}
+
 /* Header auth controls: login and signup share the same plain-text hover behavior. */
 .top-nav .top-nav__item--login,
 .top-nav .top-nav__item--signup,
